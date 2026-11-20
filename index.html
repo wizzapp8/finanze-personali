@@ -1,0 +1,2698 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Finanze Personali</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%231d4ed8'/%3E%3Ctext x='96' y='125' font-size='96' text-anchor='middle'%3E%F0%9F%92%BC%3C/text%3E%3C/svg%3E" />
+  <!-- Font Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Google Identity Services (GIS) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['selector', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --bg-canvas: #eef2f7;
+      --bg-phone: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-muted: #eef2f6;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-soft: #e2e8f0;
+    }
+
+    html[data-theme="dark"] {
+      --bg-canvas: #090d16;
+      --bg-phone: #0f172a;
+      --bg-card: #1e293b;
+      --bg-muted: #162032;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --border-soft: #334155;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .app-shell {
+      background-color: var(--bg-phone);
+      color: var(--text-main);
+      border-color: var(--border-soft);
+      min-height: 100vh;
+      min-height: 100dvh;
+      transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    }
+
+    .surface-card {
+      background-color: var(--bg-card);
+      border-color: var(--border-soft);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .surface-muted {
+      background-color: var(--bg-muted);
+      border-color: var(--border-soft);
+    }
+
+    .text-subtle {
+      color: var(--text-sub);
+    }
+
+    .pb-safe {
+      padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .nav-safe {
+      padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-start sm:py-6 px-0 sm:px-4">
+
+  <!-- Contenitore Principale Responsive (Full-screen su Android, Smartphone frame su Desktop) -->
+  <div class="app-shell w-full max-w-[460px] sm:min-h-[820px] sm:h-[850px] sm:rounded-[34px] sm:border sm:shadow-2xl flex flex-col relative overflow-hidden">
+
+    <!-- Header App -->
+    <header class="px-4 pt-3.5 pb-3 border-b surface-card flex items-center justify-between shrink-0 z-10">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">💼</span>
+          <h1 id="header-title" class="text-base font-bold tracking-tight truncate">Nuovo Movimento</h1>
+        </div>
+        <p id="header-subtitle" class="text-[11px] text-subtle mt-0.5 truncate">Registra entrate, uscite, giroconti e bozze</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          id="btn-install-pwa"
+          type="button"
+          class="hidden text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition"
+        >
+          📲 Installa
+        </button>
+        <button
+          id="btn-header-drive"
+          type="button"
+          class="text-[10px] font-semibold px-2.5 py-1 rounded-full border surface-muted flex items-center gap-1.5"
+          title="Stato sincronizzazione Google Drive"
+        >
+          <span id="drive-dot" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          <span id="drive-pill-text">Offline</span>
+        </button>
+        <button
+          id="btn-theme-toggle"
+          type="button"
+          class="w-8 h-8 rounded-xl border surface-muted flex items-center justify-center text-sm hover:opacity-80 active:scale-95 transition"
+          aria-label="Cambia tema Chiaro/Scuro"
+        >
+          <span id="theme-icon">☀️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Toast / Notifica non bloccante -->
+    <div id="toast-box" class="hidden mx-4 mt-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold shadow-lg border z-30 flex items-center justify-between gap-2">
+      <span id="toast-message"></span>
+      <button id="toast-close" type="button" class="text-xs opacity-70 hover:opacity-100">✕</button>
+    </div>
+
+    <!-- Area Contenuto Principale Scorrevole -->
+    <main id="main-scroll" class="flex-1 overflow-y-auto no-scrollbar px-4 pt-3 pb-safe space-y-4">
+
+      <!-- =========================================================
+           SCHEDA 1: NUOVO MOVIMENTO + BOZZE RICORRENTI
+           ========================================================= -->
+      <section id="tab-new" class="space-y-4">
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm">
+          <div class="grid grid-cols-3 gap-1.5 p-1 rounded-xl surface-muted mb-3.5" role="tablist">
+            <button
+              type="button"
+              data-tx-type="Uscita"
+              class="tx-type-btn py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 bg-rose-600 text-white shadow-sm"
+            >
+              <span>➖</span> Uscita
+            </button>
+            <button
+              type="button"
+              data-tx-type="Entrata"
+              class="tx-type-btn py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 text-subtle hover:opacity-80"
+            >
+              <span>➕</span> Entrata
+            </button>
+            <button
+              type="button"
+              data-tx-type="Giroconto"
+              class="tx-type-btn py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 text-subtle hover:opacity-80"
+            >
+              <span>🔄</span> Giroconto
+            </button>
+          </div>
+
+          <form id="tx-form" class="space-y-3">
+            <input type="hidden" id="tx-edit-id" value="" />
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label for="tx-amount" class="block text-[11px] font-semibold text-subtle mb-1">Importo (€)</label>
+                <input
+                  id="tx-amount"
+                  type="number"
+                  inputmode="decimal"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0,00"
+                  required
+                  class="w-full px-3 py-2.5 rounded-xl border surface-muted text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label for="tx-date" class="block text-[11px] font-semibold text-subtle mb-1">Data</label>
+                <input
+                  id="tx-date"
+                  type="date"
+                  required
+                  class="w-full px-3 py-2.5 rounded-xl border surface-muted text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label id="tx-account-label" for="tx-account" class="block text-[11px] font-semibold text-subtle mb-1">Conto</label>
+              <select
+                id="tx-account"
+                class="w-full px-3 py-2.5 rounded-xl border surface-muted text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              ></select>
+            </div>
+
+            <div id="tx-to-account-wrap" class="hidden">
+              <label for="tx-to-account" class="block text-[11px] font-semibold text-subtle mb-1">Conto Destinazione</label>
+              <select
+                id="tx-to-account"
+                class="w-full px-3 py-2.5 rounded-xl border surface-muted text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+              ></select>
+            </div>
+
+            <div id="tx-cat-wrap" class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label for="tx-category" class="block text-[11px] font-semibold text-subtle mb-1">Categoria</label>
+                <select
+                  id="tx-category"
+                  class="w-full px-3 py-2.5 rounded-xl border surface-muted text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                ></select>
+              </div>
+              <div>
+                <label for="tx-subcategory" class="block text-[11px] font-semibold text-subtle mb-1">Sottocategoria</label>
+                <select
+                  id="tx-subcategory"
+                  class="w-full px-3 py-2.5 rounded-xl border surface-muted text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                ></select>
+              </div>
+            </div>
+
+            <div>
+              <label for="tx-note" class="block text-[11px] font-semibold text-subtle mb-1">Note</label>
+              <input
+                id="tx-note"
+                type="text"
+                placeholder="Es. Spesa supermercato, bolletta luce..."
+                class="w-full px-3 py-2.5 rounded-xl border surface-muted text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <button
+                id="btn-save-tx"
+                type="submit"
+                class="flex-1 py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold shadow-md transition"
+              >
+                Salva Movimento
+              </button>
+              <button
+                id="btn-cancel-edit"
+                type="button"
+                class="hidden py-3 px-3.5 rounded-2xl border surface-muted text-xs font-semibold hover:opacity-80"
+              >
+                Annulla
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Sezione Bozze Ricorrenti da Confermare -->
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm">
+          <div class="flex items-center justify-between mb-2.5">
+            <div>
+              <h2 class="text-xs font-bold flex items-center gap-1.5">
+                <span>🔁</span> Bozze Ricorrenti da Confermare
+              </h2>
+              <p class="text-[11px] text-subtle">Generate automaticamente alle scadenze o manualmente</p>
+            </div>
+            <span id="drafts-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500">
+              0
+            </span>
+          </div>
+          <div id="drafts-list" class="space-y-2.5"></div>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           SCHEDA 2: CONTI E STORICO
+           ========================================================= -->
+      <section id="tab-accounts" class="hidden space-y-4">
+        <div class="rounded-2xl p-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold uppercase tracking-wider opacity-85">Patrimonio Totale</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-white/15 font-medium">Saldi aggiornati</span>
+          </div>
+          <div id="total-net-worth" class="text-2xl font-extrabold mt-1 tracking-tight">0,00 €</div>
+          <p class="text-[11px] opacity-80 mt-1">I giroconti spostano fondi tra conti senza alterare il totale</p>
+        </div>
+
+        <div id="accounts-grid" class="grid grid-cols-2 gap-2.5"></div>
+
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold">📜 Storico Movimenti</h2>
+            <button id="btn-clear-filters" type="button" class="text-[11px] font-semibold text-blue-500 hover:underline">
+              Azzera filtri
+            </button>
+          </div>
+
+          <input
+            id="filter-search"
+            type="text"
+            placeholder="Cerca per nota, categoria o conto..."
+            class="w-full px-3 py-2 rounded-xl border surface-muted text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <div class="grid grid-cols-3 gap-2">
+            <select id="filter-month" class="px-2 py-2 rounded-xl border surface-muted text-[11px] font-semibold">
+              <option value="ALL">Tutti i mesi</option>
+            </select>
+            <select id="filter-account" class="px-2 py-2 rounded-xl border surface-muted text-[11px] font-semibold">
+              <option value="ALL">Tutti i conti</option>
+            </select>
+            <select id="filter-category" class="px-2 py-2 rounded-xl border surface-muted text-[11px] font-semibold">
+              <option value="ALL">Tutte le cat.</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="transactions-list" class="space-y-2"></div>
+      </section>
+
+      <!-- =========================================================
+           SCHEDA 3: REPORT E STATISTICHE
+           ========================================================= -->
+      <section id="tab-reports" class="hidden space-y-4">
+        <div class="surface-card border rounded-2xl p-3 space-y-2.5 shadow-sm">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold flex items-center gap-1.5">
+              <span>📅</span> Periodo di analisi
+            </span>
+            <div class="grid grid-cols-2 p-0.5 rounded-xl surface-muted border text-[11px] font-bold">
+              <button type="button" data-report-mode="month" class="report-mode-btn px-2.5 py-1 rounded-lg bg-blue-600 text-white">Mese</button>
+              <button type="button" data-report-mode="year" class="report-mode-btn px-2.5 py-1 rounded-lg text-subtle">Anno completo</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div id="report-month-wrap">
+              <label for="report-month" class="block text-[10px] font-semibold text-subtle mb-1">Mese</label>
+              <select id="report-month" class="w-full px-2.5 py-2 rounded-xl border surface-muted text-xs font-bold"></select>
+            </div>
+            <div id="report-year-wrap" class="hidden">
+              <label for="report-year" class="block text-[10px] font-semibold text-subtle mb-1">Anno</label>
+              <select id="report-year" class="w-full px-2.5 py-2 rounded-xl border surface-muted text-xs font-bold"></select>
+            </div>
+            <div id="report-account-wrap">
+              <label for="report-account" class="block text-[10px] font-semibold text-subtle mb-1">Conto</label>
+              <select id="report-account" class="w-full px-2.5 py-2 rounded-xl border surface-muted text-xs font-bold">
+                <option value="ALL">Tutti i conti</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div class="surface-card border rounded-2xl p-2.5 shadow-sm">
+            <span class="text-[10px] font-semibold text-subtle block">Entrate</span>
+            <span id="kpi-income" class="text-xs sm:text-sm font-extrabold text-emerald-500 mt-1 block">0,00 €</span>
+          </div>
+          <div class="surface-card border rounded-2xl p-2.5 shadow-sm">
+            <span class="text-[10px] font-semibold text-subtle block">Uscite</span>
+            <span id="kpi-expense" class="text-xs sm:text-sm font-extrabold text-rose-500 mt-1 block">0,00 €</span>
+          </div>
+          <div class="surface-card border rounded-2xl p-2.5 shadow-sm">
+            <span class="text-[10px] font-semibold text-subtle block">Risparmio</span>
+            <span id="kpi-savings" class="text-xs sm:text-sm font-extrabold mt-1 block">0,00 €</span>
+          </div>
+        </div>
+        <p class="text-[10px] text-subtle px-1 -mt-2">
+          * I Giroconto e le righe Saldo_Iniziale sono esclusi da Entrate, Uscite e Risparmio netto.
+        </p>
+
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div>
+              <h2 class="text-xs font-bold">🍩 Uscite per Categoria</h2>
+              <p id="donut-subtitle" class="text-[10px] text-subtle">Dettaglio filtro attivo</p>
+            </div>
+            <select id="donut-group-mode" class="px-2 py-1 rounded-lg border surface-muted text-[10px] font-bold">
+              <option value="category">Categoria</option>
+              <option value="subcategory">Sottocategoria</option>
+            </select>
+          </div>
+          <div class="relative h-52 w-full flex items-center justify-center">
+            <canvas id="chart-category-donut"></canvas>
+          </div>
+          <p class="text-[10px] text-subtle text-center mt-1.5">Tocca uno spicchio o una riga per vedere il dettaglio delle voci</p>
+          <div id="donut-breakdown" class="mt-2.5 space-y-1.5 text-[11px]"></div>
+
+          <!-- Pannello dettaglio voci della categoria selezionata -->
+          <div id="report-category-detail" class="hidden mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <span class="text-[10px] font-semibold text-blue-500 uppercase tracking-wider block">Dettaglio voci</span>
+                <h3 id="report-detail-title" class="text-xs font-bold truncate"></h3>
+              </div>
+              <button
+                type="button"
+                id="btn-close-report-detail"
+                class="px-2.5 py-1 rounded-lg border surface-muted text-[10px] font-bold hover:opacity-80 shrink-0"
+              >
+                Chiudi ✕
+              </button>
+            </div>
+            <div id="report-detail-list" class="space-y-1.5 max-h-56 overflow-y-auto pr-0.5"></div>
+          </div>
+        </div>
+
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm">
+          <div class="mb-2">
+            <h2 id="bar-chart-title" class="text-xs font-bold">📊 Entrate vs Uscite Mensili</h2>
+            <p id="bar-chart-subtitle" class="text-[10px] text-subtle">Andamento mensile (esclusi giroconti)</p>
+          </div>
+          <div class="relative h-52 w-full">
+            <canvas id="chart-monthly-bars"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           SCHEDA 4: IMPOSTAZIONI E GOOGLE DRIVE
+           ========================================================= -->
+      <section id="tab-settings" class="hidden space-y-4">
+        <!-- Google Drive Sync Reale (GIS + Drive API v3) -->
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h2 class="text-xs font-bold flex items-center gap-1.5">
+                <span>☁️</span> Google Drive & CSV Unico
+              </h2>
+              <p class="text-[11px] text-subtle">File: <code class="font-semibold">finanze_personali.csv</code> (sep. <code class="font-semibold">;</code>)</p>
+            </div>
+            <button
+              id="btn-drive-connect"
+              type="button"
+              class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition shrink-0"
+            >
+              Accedi Google
+            </button>
+          </div>
+
+          <!-- Configurazione Google OAuth Client ID -->
+          <div class="space-y-1.5">
+            <label for="google-client-id" class="block text-[10px] font-semibold text-subtle">
+              Google OAuth Client ID (Web Application • scope <code>drive.file</code>)
+            </label>
+            <div class="flex gap-1.5">
+              <input
+                id="google-client-id"
+                type="text"
+                placeholder="123456789-xxxx.apps.googleusercontent.com"
+                class="flex-1 px-2.5 py-2 rounded-xl border surface-muted text-[11px] font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                id="btn-save-client-id"
+                type="button"
+                class="px-3 py-2 rounded-xl border surface-muted hover:opacity-85 text-[11px] font-bold"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-xl surface-muted text-[11px] space-y-1">
+            <div>Stato: <strong id="drive-status-label">Non autenticato</strong></div>
+            <div>Ultimo sync: <span id="drive-last-sync">Mai sincronizzato</span></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              id="btn-upload-drive"
+              type="button"
+              class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition"
+            >
+              ⬆️ Carica su Drive
+            </button>
+            <button
+              id="btn-download-drive"
+              type="button"
+              class="py-2.5 px-3 rounded-xl border surface-muted hover:opacity-85 text-xs font-bold transition"
+            >
+              ⬇️ Scarica da Drive
+            </button>
+          </div>
+
+          <!-- Backup Locale: Esporta + Importa -->
+          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
+            <button
+              id="btn-export-local-csv"
+              type="button"
+              class="py-2.5 px-2.5 rounded-xl border surface-muted hover:opacity-85 text-[11px] font-bold flex items-center justify-center gap-1 transition"
+            >
+              <span>💾</span> Esporta CSV
+            </button>
+            <label
+              for="input-import-local-csv"
+              class="py-2.5 px-2.5 rounded-xl border surface-muted hover:opacity-85 text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer text-center"
+            >
+              <span>📂</span> Importa CSV
+              <input id="input-import-local-csv" type="file" accept=".csv,text/csv" class="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Tema Chiaro / Scuro -->
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm flex items-center justify-between">
+          <div>
+            <h2 class="text-xs font-bold">🎨 Tema Interfaccia</h2>
+            <p class="text-[11px] text-subtle">Passa tra modalità Chiaro e Scuro</p>
+          </div>
+          <button
+            id="btn-settings-theme"
+            type="button"
+            class="px-3.5 py-2 rounded-xl border surface-muted text-xs font-bold"
+          >
+            Cambia Tema
+          </button>
+        </div>
+
+        <!-- Gestione Conti & Saldo Iniziale -->
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm space-y-3">
+          <h2 class="text-xs font-bold">🏦 Gestione Conti & Saldo Iniziale</h2>
+          <div id="settings-accounts-list" class="space-y-2"></div>
+
+          <form id="edit-account-form" class="hidden p-3 rounded-xl border-2 border-blue-500/50 surface-muted space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-blue-500">Modifica Conto</span>
+              <button type="button" id="btn-cancel-edit-acc" class="text-[11px] font-semibold text-subtle hover:opacity-80">Annulla</button>
+            </div>
+            <input type="hidden" id="edit-acc-id" />
+            <div class="grid grid-cols-12 gap-1.5">
+              <input id="edit-acc-icon" type="text" maxlength="3" required class="col-span-2 px-2 py-2 rounded-xl border surface-card text-center text-xs" />
+              <input id="edit-acc-name" type="text" placeholder="Nome / Descrizione conto" required class="col-span-6 px-2.5 py-2 rounded-xl border surface-card text-xs font-semibold" />
+              <input id="edit-acc-init" type="number" step="0.01" placeholder="Saldo iniz." class="col-span-4 px-2 py-2 rounded-xl border surface-card text-xs font-semibold" />
+            </div>
+            <div id="acc-icon-presets" class="flex flex-wrap gap-1 pt-0.5">
+              <button type="button" data-pick-acc-icon="🏦" class="px-2 py-1 rounded-lg border surface-card text-xs">🏦</button>
+              <button type="button" data-pick-acc-icon="💳" class="px-2 py-1 rounded-lg border surface-card text-xs">💳</button>
+              <button type="button" data-pick-acc-icon="💵" class="px-2 py-1 rounded-lg border surface-card text-xs">💵</button>
+              <button type="button" data-pick-acc-icon="🐷" class="px-2 py-1 rounded-lg border surface-card text-xs">🐷</button>
+              <button type="button" data-pick-acc-icon="🪙" class="px-2 py-1 rounded-lg border surface-card text-xs">🪙</button>
+              <button type="button" data-pick-acc-icon="💼" class="px-2 py-1 rounded-lg border surface-card text-xs">💼</button>
+              <button type="button" data-pick-acc-icon="📈" class="px-2 py-1 rounded-lg border surface-card text-xs">📈</button>
+              <button type="button" data-pick-acc-icon="🔒" class="px-2 py-1 rounded-lg border surface-card text-xs">🔒</button>
+            </div>
+            <button type="submit" class="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">Salva Modifiche Conto</button>
+          </form>
+
+          <form id="add-account-form" class="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+            <div class="grid grid-cols-12 gap-1.5">
+              <input
+                id="new-acc-icon"
+                type="text"
+                value="🏦"
+                maxlength="3"
+                aria-label="Emoji conto"
+                class="col-span-2 px-2 py-2 rounded-xl border surface-muted text-center text-xs"
+              />
+              <input
+                id="new-acc-name"
+                type="text"
+                placeholder="Nome / descrizione conto"
+                required
+                class="col-span-6 px-2.5 py-2 rounded-xl border surface-muted text-xs"
+              />
+              <input
+                id="new-acc-init"
+                type="number"
+                step="0.01"
+                value="0"
+                placeholder="Saldo iniz."
+                class="col-span-4 px-2 py-2 rounded-xl border surface-muted text-xs"
+              />
+            </div>
+            <div id="new-acc-icon-presets" class="flex items-center justify-between gap-1">
+              <div class="flex flex-wrap gap-1">
+                <button type="button" data-pick-new-acc-icon="🏦" class="px-1.5 py-0.5 rounded-lg border surface-muted text-xs">🏦</button>
+                <button type="button" data-pick-new-acc-icon="💳" class="px-1.5 py-0.5 rounded-lg border surface-muted text-xs">💳</button>
+                <button type="button" data-pick-new-acc-icon="💵" class="px-1.5 py-0.5 rounded-lg border surface-muted text-xs">💵</button>
+                <button type="button" data-pick-new-acc-icon="🐷" class="px-1.5 py-0.5 rounded-lg border surface-muted text-xs">🐷</button>
+                <button type="button" data-pick-new-acc-icon="🪙" class="px-1.5 py-0.5 rounded-lg border surface-muted text-xs">🪙</button>
+                <button type="button" data-pick-new-acc-icon="💼" class="px-1.5 py-0.5 rounded-lg border surface-muted text-xs">💼</button>
+              </div>
+              <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold">+ Conto</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Gestione Categorie e Sottocategorie -->
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm space-y-3">
+          <h2 class="text-xs font-bold">🏷️ Categorie e Sottocategorie</h2>
+          <div id="settings-categories-list" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+
+          <form id="edit-category-form" class="hidden p-3 rounded-xl border-2 border-blue-500/50 surface-muted space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-blue-500">Modifica Categoria & Sottocategorie</span>
+              <button type="button" id="btn-cancel-edit-cat" class="text-[11px] font-semibold text-subtle hover:opacity-80">Annulla</button>
+            </div>
+            <input type="hidden" id="edit-cat-id" />
+            <div class="grid grid-cols-3 gap-1.5">
+              <select id="edit-cat-type" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold">
+                <option value="Uscita">Uscita</option>
+                <option value="Entrata">Entrata</option>
+              </select>
+              <input id="edit-cat-name" type="text" placeholder="Nome categoria" required class="col-span-2 px-2.5 py-2 rounded-xl border surface-card text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-subtle mb-1">Sottocategorie (separate da virgola)</label>
+              <input id="edit-cat-subs" type="text" placeholder="Es. Affitto, Bollette, Manutenzione" class="w-full px-2.5 py-2 rounded-xl border surface-card text-xs" />
+            </div>
+            <button type="submit" class="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">Salva Modifiche Categoria</button>
+          </form>
+
+          <form id="add-category-form" class="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+            <div class="grid grid-cols-3 gap-1.5">
+              <select id="new-cat-type" class="px-2 py-2 rounded-xl border surface-muted text-xs font-semibold">
+                <option value="Uscita">Uscita</option>
+                <option value="Entrata">Entrata</option>
+              </select>
+              <input
+                id="new-cat-name"
+                type="text"
+                placeholder="Nuova categoria"
+                required
+                class="col-span-2 px-2.5 py-2 rounded-xl border surface-muted text-xs"
+              />
+            </div>
+            <div class="flex gap-1.5">
+              <input
+                id="new-cat-subs"
+                type="text"
+                placeholder="Sottocategorie (separate da virgola)"
+                class="flex-1 px-2.5 py-2 rounded-xl border surface-muted text-xs"
+              />
+              <button type="submit" class="px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold">Aggiungi</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Gestione Ricorrenze -->
+        <div class="surface-card border rounded-2xl p-3.5 shadow-sm space-y-3">
+          <h2 class="text-xs font-bold">⏰ Regole Ricorrenti (Bozze)</h2>
+          <div id="settings-recurring-list" class="space-y-2"></div>
+
+          <form id="edit-recurring-form" class="hidden p-3 rounded-xl border-2 border-blue-500/50 surface-muted space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-blue-500">Modifica Regola Ricorrente</span>
+              <button type="button" id="btn-cancel-edit-rec" class="text-[11px] font-semibold text-subtle hover:opacity-80">Annulla</button>
+            </div>
+            <input type="hidden" id="edit-rec-id" />
+            <div class="grid grid-cols-2 gap-1.5">
+              <select id="edit-rec-type" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold">
+                <option value="Uscita">Uscita</option>
+                <option value="Entrata">Entrata</option>
+                <option value="Giroconto">Giroconto</option>
+              </select>
+              <input id="edit-rec-amount" type="number" step="0.01" min="0.01" placeholder="Importo €" required class="px-2.5 py-2 rounded-xl border surface-card text-xs font-semibold" />
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <select id="edit-rec-account" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold"></select>
+              <select id="edit-rec-to-account" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <select id="edit-rec-category" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold"></select>
+              <input id="edit-rec-subcategory" type="text" placeholder="Sottocategoria" class="px-2.5 py-2 rounded-xl border surface-card text-xs" />
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <input id="edit-rec-day" type="number" min="1" max="31" placeholder="Giorno (1-31)" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold" />
+              <select id="edit-rec-freq" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold">
+                <option value="Mensile">Mensile</option>
+                <option value="Settimanale">Settimanale</option>
+                <option value="Annuale">Annuale</option>
+              </select>
+              <select id="edit-rec-status" class="px-2 py-2 rounded-xl border surface-card text-xs font-semibold">
+                <option value="Attiva">Attiva</option>
+                <option value="Bozza">Bozza</option>
+              </select>
+            </div>
+            <input id="edit-rec-note" type="text" placeholder="Descrizione / nota ricorrenza" required class="w-full px-2.5 py-2 rounded-xl border surface-card text-xs" />
+            <button type="submit" class="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">Salva Modifiche Ricorrenza</button>
+          </form>
+
+          <form id="add-recurring-form" class="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+            <div class="grid grid-cols-2 gap-1.5">
+              <select id="rec-type" class="px-2 py-2 rounded-xl border surface-muted text-xs font-semibold">
+                <option value="Uscita">Uscita</option>
+                <option value="Entrata">Entrata</option>
+                <option value="Giroconto">Giroconto</option>
+              </select>
+              <input id="rec-amount" type="number" step="0.01" min="0.01" placeholder="Importo €" required class="px-2.5 py-2 rounded-xl border surface-muted text-xs" />
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <select id="rec-account" class="px-2 py-2 rounded-xl border surface-muted text-xs font-semibold"></select>
+              <select id="rec-category" class="px-2 py-2 rounded-xl border surface-muted text-xs font-semibold"></select>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <input id="rec-day" type="number" min="1" max="31" value="1" placeholder="Giorno" class="px-2 py-2 rounded-xl border surface-muted text-xs" />
+              <select id="rec-freq" class="px-2 py-2 rounded-xl border surface-muted text-xs font-semibold">
+                <option value="Mensile">Mensile</option>
+                <option value="Settimanale">Settimanale</option>
+                <option value="Annuale">Annuale</option>
+              </select>
+              <select id="rec-status" class="px-2 py-2 rounded-xl border surface-muted text-xs font-semibold">
+                <option value="Attiva">Attiva</option>
+                <option value="Bozza">Bozza</option>
+              </select>
+            </div>
+            <div class="flex gap-1.5">
+              <input id="rec-note" type="text" placeholder="Descrizione ricorrenza (es. Affitto)" required class="flex-1 px-2.5 py-2 rounded-xl border surface-muted text-xs" />
+              <button type="submit" class="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold">+ Regola</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Barra di Navigazione in Basso (4 Schede) -->
+    <nav class="fixed sm:absolute bottom-0 inset-x-0 border-t surface-card px-2 pt-1.5 nav-safe grid grid-cols-4 gap-1 z-20" aria-label="Navigazione principale">
+      <button
+        type="button"
+        data-tab="tab-new"
+        class="nav-tab flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-bold transition text-blue-500 bg-blue-500/10"
+      >
+        <span class="text-base leading-none mb-1">➕</span>
+        <span class="truncate w-full text-center">Nuovo</span>
+      </button>
+      <button
+        type="button"
+        data-tab="tab-accounts"
+        class="nav-tab flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-semibold transition text-subtle hover:opacity-80"
+      >
+        <span class="text-base leading-none mb-1">💳</span>
+        <span class="truncate w-full text-center">Conti</span>
+      </button>
+      <button
+        type="button"
+        data-tab="tab-reports"
+        class="nav-tab flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-semibold transition text-subtle hover:opacity-80"
+      >
+        <span class="text-base leading-none mb-1">📈</span>
+        <span class="truncate w-full text-center">Report</span>
+      </button>
+      <button
+        type="button"
+        data-tab="tab-settings"
+        class="nav-tab flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] font-semibold transition text-subtle hover:opacity-80"
+      >
+        <span class="text-base leading-none mb-1">⚙️</span>
+        <span class="truncate w-full text-center">Impostazioni</span>
+      </button>
+    </nav>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const STORAGE_KEY = 'finanze_personali_pwa_v1';
+      const DRIVE_FILE_NAME = 'finanze_personali.csv';
+      const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+      let googleAccessToken = null;
+      let tokenClient = null;
+      let deferredInstallPrompt = null;
+
+      function formatEUR(value) {
+        const num = Number(value) || 0;
+        return num.toLocaleString('it-IT', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }) + ' €';
+      }
+
+      function formatCSVNumber(value) {
+        const num = Number(value) || 0;
+        return num.toFixed(2).replace('.', ',');
+      }
+
+      function parseCSVNumber(raw) {
+        if (typeof raw === 'number') return Math.abs(raw);
+        const cleaned = String(raw || '0').replace(/\s/g, '').replace(',', '.');
+        const parsed = parseFloat(cleaned);
+        return Number.isNaN(parsed) ? 0 : Math.abs(parsed);
+      }
+
+      function todayISO() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      function currentMonthKey() {
+        return todayISO().slice(0, 7);
+      }
+
+      function formatMonthLabel(ym) {
+        if (!ym || !ym.includes('-')) return ym;
+        const [y, m] = ym.split('-').map(Number);
+        const dt = new Date(y, (m || 1) - 1, 1);
+        const label = dt.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+        return label.charAt(0).toUpperCase() + label.slice(1);
+      }
+
+      // Stato iniziale pulito pronto per l'uso reale
+      function createCleanInitialState() {
+        const today = todayISO();
+        return {
+          theme: 'dark',
+          activeTab: 'tab-new',
+          currentFormType: 'Uscita',
+          donutGroupMode: 'category',
+          reportMode: 'month',
+          reportAccount: 'ALL',
+          selectedReportCategory: null,
+          googleClientId: '',
+          driveLastSync: 'Mai sincronizzato',
+          accounts: [
+            { id: 'acc_cc', name: 'Conto Corrente', icon: '🏦' },
+            { id: 'acc_card', name: 'Carta Ricaricabile', icon: '💳' },
+            { id: 'acc_cash', name: 'Contanti', icon: '💵' },
+            { id: 'acc_save', name: 'Risparmi', icon: '🐷' }
+          ],
+          categories: [
+            { id: 'cat_casa', name: 'Casa', type: 'Uscita', subs: ['Affitto/Mutuo', 'Bollette', 'Manutenzione'] },
+            { id: 'cat_alim', name: 'Alimentari', type: 'Uscita', subs: ['Supermercato', 'Ristoranti', 'Bar/Caffè'] },
+            { id: 'cat_trasp', name: 'Trasporti', type: 'Uscita', subs: ['Carburante', 'Mezzi Pubblici', 'Auto/Assicurazione'] },
+            { id: 'cat_svago', name: 'Svago', type: 'Uscita', subs: ['Cinema/Eventi', 'Viaggi', 'Sport/Hobby'] },
+            { id: 'cat_salute', name: 'Salute', type: 'Uscita', subs: ['Farmacia', 'Visite Mediche'] },
+            { id: 'cat_altro_u', name: 'Altro (Uscite)', type: 'Uscita', subs: ['Abbigliamento', 'Regali', 'Varie'] },
+            { id: 'cat_stip', name: 'Stipendio', type: 'Entrata', subs: ['Stipendio Mensile', 'Bonus/Tredicesima'] },
+            { id: 'cat_extra', name: 'Extra Entrate', type: 'Entrata', subs: ['Rimborsi', 'Vendite', 'Interessi'] }
+          ],
+          transactions: [
+            {
+              id: 'init_acc_cc',
+              date: today,
+              type: 'Saldo_Iniziale',
+              amount: 0,
+              account: 'Conto Corrente',
+              toAccount: '',
+              category: 'Sistema',
+              subcategory: 'Saldo Iniziale',
+              recurring: '',
+              note: 'Saldo iniziale Conto Corrente'
+            },
+            {
+              id: 'init_acc_card',
+              date: today,
+              type: 'Saldo_Iniziale',
+              amount: 0,
+              account: 'Carta Ricaricabile',
+              toAccount: '',
+              category: 'Sistema',
+              subcategory: 'Saldo Iniziale',
+              recurring: '',
+              note: 'Saldo iniziale Carta Ricaricabile'
+            },
+            {
+              id: 'init_acc_cash',
+              date: today,
+              type: 'Saldo_Iniziale',
+              amount: 0,
+              account: 'Contanti',
+              toAccount: '',
+              category: 'Sistema',
+              subcategory: 'Saldo Iniziale',
+              recurring: '',
+              note: 'Saldo iniziale Contanti'
+            },
+            {
+              id: 'init_acc_save',
+              date: today,
+              type: 'Saldo_Iniziale',
+              amount: 0,
+              account: 'Risparmi',
+              toAccount: '',
+              category: 'Sistema',
+              subcategory: 'Saldo Iniziale',
+              recurring: '',
+              note: 'Saldo iniziale Risparmi'
+            }
+          ],
+          recurringRules: [],
+          pendingDrafts: [],
+          filters: {
+            search: '',
+            month: 'ALL',
+            account: 'ALL',
+            category: 'ALL'
+          },
+          selectedReportMonth: currentMonthKey(),
+          selectedReportYear: String(new Date().getFullYear())
+        };
+      }
+
+      let state = loadState();
+      let donutChartInstance = null;
+      let barChartInstance = null;
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return createCleanInitialState();
+          const parsed = JSON.parse(raw);
+          return { ...createCleanInitialState(), ...parsed };
+        } catch (err) {
+          console.error('Errore lettura localStorage:', err);
+          return createCleanInitialState();
+        }
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (err) {
+          console.error('Errore salvataggio localStorage:', err);
+        }
+      }
+
+      // Controllo automatico scadenze ricorrenze all'avvio -> crea bozze da confermare
+      function evaluateRecurringDueDrafts() {
+        const now = new Date();
+        const curYM = currentMonthKey();
+        const curYear = String(now.getFullYear());
+        const todayDay = now.getDate();
+        let createdCount = 0;
+
+        state.recurringRules.forEach((rule) => {
+          if (rule.status !== 'Attiva') return;
+
+          const freq = rule.frequency || 'Mensile';
+          const targetDay = Math.min(28, Math.max(1, Number(rule.dayOfMonth) || 1));
+          let cycleKey = '';
+          let dueDate = todayISO();
+
+          if (freq === 'Mensile') {
+            if (todayDay < targetDay) return;
+            cycleKey = `${rule.id}_${curYM}`;
+            dueDate = `${curYM}-${String(targetDay).padStart(2, '0')}`;
+          } else if (freq === 'Annuale') {
+            if (todayDay < targetDay) return;
+            cycleKey = `${rule.id}_${curYear}`;
+            dueDate = `${curYM}-${String(targetDay).padStart(2, '0')}`;
+          } else if (freq === 'Settimanale') {
+            const weekNum = Math.ceil((now.getDate() + new Date(now.getFullYear(), now.getMonth(), 1).getDay()) / 7);
+            cycleKey = `${rule.id}_${curYM}_W${weekNum}`;
+            dueDate = todayISO();
+          }
+
+          if (!cycleKey || rule.lastGeneratedCycle === cycleKey) return;
+
+          rule.lastGeneratedCycle = cycleKey;
+          state.pendingDrafts.push({
+            id: 'draft_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            dueDate,
+            type: rule.type,
+            amount: rule.amount,
+            account: rule.account,
+            toAccount: rule.toAccount || '',
+            category: rule.category,
+            subcategory: rule.subcategory || '',
+            note: rule.note
+          });
+          createdCount++;
+        });
+
+        if (createdCount > 0) {
+          saveState();
+          showToast(`${createdCount} bozza/e ricorrente/i pronta/e da confermare!`, 'info');
+        }
+      }
+
+      let toastTimer = null;
+      function showToast(msg, variant = 'info') {
+        const box = document.getElementById('toast-box');
+        const text = document.getElementById('toast-message');
+        text.textContent = msg;
+
+        box.className = 'mx-4 mt-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold shadow-lg border z-30 flex items-center justify-between gap-2 ';
+        if (variant === 'success') {
+          box.className += 'bg-emerald-600 text-white border-emerald-500';
+        } else if (variant === 'error') {
+          box.className += 'bg-rose-600 text-white border-rose-500';
+        } else {
+          box.className += 'surface-card text-main';
+        }
+
+        box.classList.remove('hidden');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          box.classList.add('hidden');
+        }, 3600);
+      }
+
+      function computeBalances() {
+        const map = {};
+        state.accounts.forEach((acc) => {
+          map[acc.name] = 0;
+        });
+
+        for (const tx of state.transactions) {
+          const amt = Math.abs(Number(tx.amount) || 0);
+          if (tx.type === 'Saldo_Iniziale' || tx.type === 'Entrata') {
+            map[tx.account] = (map[tx.account] || 0) + amt;
+          } else if (tx.type === 'Uscita') {
+            map[tx.account] = (map[tx.account] || 0) - amt;
+          } else if (tx.type === 'Giroconto') {
+            map[tx.account] = (map[tx.account] || 0) - amt;
+            if (tx.toAccount) {
+              map[tx.toAccount] = (map[tx.toAccount] || 0) + amt;
+            }
+          }
+        }
+
+        const total = Object.values(map).reduce((sum, n) => sum + n, 0);
+        return { byAccount: map, total };
+      }
+
+      function applyTheme() {
+        const isDark = state.theme === 'dark';
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        document.getElementById('theme-icon').textContent = isDark ? '☀️' : '🌙';
+        const metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (metaTheme) metaTheme.setAttribute('content', isDark ? '#0f172a' : '#f8fafc');
+        renderCharts();
+      }
+
+      function setActiveTab(tabId) {
+        state.activeTab = tabId;
+        saveState();
+
+        ['tab-new', 'tab-accounts', 'tab-reports', 'tab-settings'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.classList.toggle('hidden', id !== tabId);
+        });
+
+        document.querySelectorAll('.nav-tab').forEach((btn) => {
+          const active = btn.dataset.tab === tabId;
+          btn.className = 'nav-tab flex flex-col items-center justify-center py-1.5 rounded-xl text-[10px] transition ' + (
+            active
+              ? 'font-bold text-blue-500 bg-blue-500/10'
+              : 'font-semibold text-subtle hover:opacity-80'
+          );
+        });
+
+        const meta = {
+          'tab-new': ['Nuovo Movimento', 'Registra entrate, uscite, giroconti e bozze'],
+          'tab-accounts': ['Conti e Storico', 'Saldi conti, filtri e cronologia movimenti'],
+          'tab-reports': ['Report e Statistiche', 'Analisi mensile e annuale per conto'],
+          'tab-settings': ['Impostazioni e Drive', 'Google Drive CSV, conti e categorie']
+        };
+        if (meta[tabId]) {
+          document.getElementById('header-title').textContent = meta[tabId][0];
+          document.getElementById('header-subtitle').textContent = meta[tabId][1];
+        }
+
+        document.getElementById('main-scroll').scrollTop = 0;
+
+        if (tabId === 'tab-reports') {
+          renderCharts();
+        }
+      }
+
+      function setFormType(type) {
+        state.currentFormType = type;
+
+        document.querySelectorAll('.tx-type-btn').forEach((btn) => {
+          const isSel = btn.dataset.txType === type;
+          if (!isSel) {
+            btn.className = 'tx-type-btn py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 text-subtle hover:opacity-80';
+            return;
+          }
+          if (type === 'Uscita') {
+            btn.className = 'tx-type-btn py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 bg-rose-600 text-white shadow-sm';
+          } else if (type === 'Entrata') {
+            btn.className = 'tx-type-btn py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 bg-emerald-600 text-white shadow-sm';
+          } else {
+            btn.className = 'tx-type-btn py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 bg-blue-600 text-white shadow-sm';
+          }
+        });
+
+        const isTransfer = type === 'Giroconto';
+        document.getElementById('tx-to-account-wrap').classList.toggle('hidden', !isTransfer);
+        document.getElementById('tx-cat-wrap').classList.toggle('hidden', isTransfer);
+        document.getElementById('tx-account-label').textContent = isTransfer ? 'Conto Origine' : 'Conto';
+
+        populateCategorySelects(type);
+      }
+
+      function populateAccountSelects() {
+        const accSel = document.getElementById('tx-account');
+        const toAccSel = document.getElementById('tx-to-account');
+        const recAccSel = document.getElementById('rec-account');
+        const editRecAccSel = document.getElementById('edit-rec-account');
+        const editRecToAccSel = document.getElementById('edit-rec-to-account');
+
+        const prevAcc = accSel.value;
+        const prevToAcc = toAccSel.value;
+        const prevRecAcc = recAccSel.value;
+
+        const optionsHTML = state.accounts
+          .map((a) => `<option value="${escapeAttr(a.name)}">${escapeHTML(a.icon)} ${escapeHTML(a.name)}</option>`)
+          .join('');
+
+        accSel.innerHTML = optionsHTML;
+        toAccSel.innerHTML = optionsHTML;
+        recAccSel.innerHTML = optionsHTML;
+        if (editRecAccSel) editRecAccSel.innerHTML = optionsHTML;
+        if (editRecToAccSel) {
+          editRecToAccSel.innerHTML = `<option value="">— Nessun dest. —</option>` + optionsHTML;
+        }
+
+        if (prevAcc && state.accounts.some((a) => a.name === prevAcc)) accSel.value = prevAcc;
+        if (prevToAcc && state.accounts.some((a) => a.name === prevToAcc)) {
+          toAccSel.value = prevToAcc;
+        } else if (state.accounts.length > 1) {
+          toAccSel.selectedIndex = 1;
+        }
+        if (prevRecAcc && state.accounts.some((a) => a.name === prevRecAcc)) recAccSel.value = prevRecAcc;
+      }
+
+      function populateCategorySelects(typeForForm = state.currentFormType, selectedCatName = null, selectedSubName = null) {
+        const catSel = document.getElementById('tx-category');
+        const matchingCats = state.categories.filter((c) => c.type === typeForForm);
+        const list = matchingCats.length > 0 ? matchingCats : state.categories;
+
+        catSel.innerHTML = list
+          .map((c) => `<option value="${escapeAttr(c.name)}">${escapeHTML(c.name)}</option>`)
+          .join('');
+
+        if (selectedCatName && list.some((c) => c.name === selectedCatName)) {
+          catSel.value = selectedCatName;
+        }
+
+        updateSubcategorySelect(selectedSubName);
+
+        const recCatSel = document.getElementById('rec-category');
+        const recType = document.getElementById('rec-type').value;
+        const recCats = state.categories.filter((c) => c.type === recType);
+        recCatSel.innerHTML = (recCats.length ? recCats : state.categories)
+          .map((c) => `<option value="${escapeAttr(c.name)}">${escapeHTML(c.name)}</option>`)
+          .join('');
+
+        const editRecCatSel = document.getElementById('edit-rec-category');
+        if (editRecCatSel) {
+          const prevEditCat = editRecCatSel.value;
+          const editRecType = document.getElementById('edit-rec-type').value;
+          const editRecCats = state.categories.filter((c) => c.type === editRecType);
+          editRecCatSel.innerHTML = (editRecCats.length ? editRecCats : state.categories)
+            .map((c) => `<option value="${escapeAttr(c.name)}">${escapeHTML(c.name)}</option>`)
+            .join('');
+          if (prevEditCat && Array.from(editRecCatSel.options).some((o) => o.value === prevEditCat)) {
+            editRecCatSel.value = prevEditCat;
+          }
+        }
+      }
+
+      function updateSubcategorySelect(preferredSub = null) {
+        const catName = document.getElementById('tx-category').value;
+        const subSel = document.getElementById('tx-subcategory');
+        const found = state.categories.find((c) => c.name === catName);
+        const subs = (found && Array.isArray(found.subs) && found.subs.length > 0) ? found.subs : ['Generale'];
+
+        subSel.innerHTML = subs
+          .map((s) => `<option value="${escapeAttr(s)}">${escapeHTML(s)}</option>`)
+          .join('');
+
+        if (preferredSub && subs.includes(preferredSub)) {
+          subSel.value = preferredSub;
+        }
+      }
+
+      function renderDrafts() {
+        const container = document.getElementById('drafts-list');
+        const badge = document.getElementById('drafts-count-badge');
+        badge.textContent = String(state.pendingDrafts.length);
+
+        if (state.pendingDrafts.length === 0) {
+          container.innerHTML = `<p class="text-xs text-subtle py-2">Nessuna bozza ricorrente in attesa di conferma.</p>`;
+          return;
+        }
+
+        container.innerHTML = state.pendingDrafts.map((d) => {
+          const isTransfer = d.type === 'Giroconto';
+          const badgeClass = d.type === 'Entrata'
+            ? 'bg-emerald-500/15 text-emerald-500'
+            : d.type === 'Giroconto'
+              ? 'bg-blue-500/15 text-blue-500'
+              : 'bg-rose-500/15 text-rose-500';
+
+          const routeText = isTransfer
+            ? `${escapeHTML(d.account)} → ${escapeHTML(d.toAccount)}`
+            : `${escapeHTML(d.account)} • ${escapeHTML(d.category)}${d.subcategory ? ' > ' + escapeHTML(d.subcategory) : ''}`;
+
+          return `
+            <div class="p-3 rounded-xl border surface-muted flex flex-col gap-2">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}">${escapeHTML(d.type)}</span>
+                    <span class="text-[10px] text-subtle">Scadenza: ${escapeHTML(d.dueDate)}</span>
+                  </div>
+                  <div class="text-xs font-bold mt-1">${escapeHTML(d.note)}</div>
+                  <div class="text-[11px] text-subtle">${routeText}</div>
+                </div>
+                <div class="text-xs font-extrabold whitespace-nowrap">${formatEUR(d.amount)}</div>
+              </div>
+              <div class="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  data-confirm-draft="${escapeAttr(d.id)}"
+                  class="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition"
+                >
+                  ✓ Conferma
+                </button>
+                <button
+                  type="button"
+                  data-discard-draft="${escapeAttr(d.id)}"
+                  class="py-1.5 px-3 rounded-xl border surface-card hover:opacity-80 text-[11px] font-semibold transition"
+                >
+                  ✕ Scarta
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function renderAccountsTab() {
+        const { byAccount, total } = computeBalances();
+        document.getElementById('total-net-worth').textContent = formatEUR(total);
+
+        const grid = document.getElementById('accounts-grid');
+        grid.innerHTML = state.accounts.map((acc) => {
+          const bal = byAccount[acc.name] || 0;
+          const balColor = bal < 0 ? 'text-rose-500' : '';
+          return `
+            <button
+              type="button"
+              data-quick-filter-account="${escapeAttr(acc.name)}"
+              class="surface-card border rounded-2xl p-3 text-left shadow-sm hover:border-blue-500/60 active:scale-[0.99] transition"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-lg">${escapeHTML(acc.icon)}</span>
+                <span class="text-[10px] text-subtle font-medium">Filtra →</span>
+              </div>
+              <div class="text-xs font-semibold text-subtle mt-1.5 truncate">${escapeHTML(acc.name)}</div>
+              <div class="text-sm font-extrabold mt-0.5 ${balColor}">${formatEUR(bal)}</div>
+            </button>
+          `;
+        }).join('');
+
+        populateFilterOptions();
+        renderTransactionsList();
+      }
+
+      function populateFilterOptions() {
+        const monthSel = document.getElementById('filter-month');
+        const accSel = document.getElementById('filter-account');
+        const catSel = document.getElementById('filter-category');
+
+        const months = Array.from(
+          new Set(
+            state.transactions
+              .filter((t) => t.type !== 'Saldo_Iniziale')
+              .map((t) => (t.date || '').slice(0, 7))
+              .filter(Boolean)
+          )
+        ).sort().reverse();
+
+        monthSel.innerHTML = `<option value="ALL">Tutti i mesi</option>` +
+          months.map((m) => `<option value="${escapeAttr(m)}">${escapeHTML(formatMonthLabel(m))}</option>`).join('');
+        monthSel.value = state.filters.month;
+
+        accSel.innerHTML = `<option value="ALL">Tutti i conti</option>` +
+          state.accounts.map((a) => `<option value="${escapeAttr(a.name)}">${escapeHTML(a.name)}</option>`).join('');
+        accSel.value = state.filters.account;
+
+        const allCatNames = Array.from(
+          new Set([
+            ...state.categories.map((c) => c.name),
+            ...state.transactions.filter((t) => t.type !== 'Saldo_Iniziale').map((t) => t.category).filter(Boolean)
+          ])
+        );
+        catSel.innerHTML = `<option value="ALL">Tutte le cat.</option>` +
+          allCatNames.map((c) => `<option value="${escapeAttr(c)}">${escapeHTML(c)}</option>`).join('');
+        catSel.value = state.filters.category;
+
+        document.getElementById('filter-search').value = state.filters.search;
+      }
+
+      function renderTransactionsList() {
+        const listEl = document.getElementById('transactions-list');
+        const { search, month, account, category } = state.filters;
+        const q = search.trim().toLowerCase();
+
+        const filtered = state.transactions
+          .filter((tx) => {
+            if (month !== 'ALL' && !(tx.date || '').startsWith(month)) return false;
+            if (account !== 'ALL' && tx.account !== account && tx.toAccount !== account) return false;
+            if (category !== 'ALL' && tx.category !== category) return false;
+            if (q) {
+              const hay = `${tx.note || ''} ${tx.category || ''} ${tx.subcategory || ''} ${tx.account || ''} ${tx.toAccount || ''} ${tx.type || ''}`.toLowerCase();
+              if (!hay.includes(q)) return false;
+            }
+            return true;
+          })
+          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        if (filtered.length === 0) {
+          listEl.innerHTML = `
+            <div class="surface-card border rounded-2xl p-6 text-center text-xs text-subtle">
+              Nessun movimento trovato con i filtri selezionati.
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = filtered.map((tx) => {
+          const isInit = tx.type === 'Saldo_Iniziale';
+          const isTransfer = tx.type === 'Giroconto';
+          const isIncome = tx.type === 'Entrata';
+
+          const sign = isTransfer ? '⇄ ' : (isIncome || isInit) ? '+' : '-';
+          const amountClass = isTransfer
+            ? 'text-blue-500'
+            : (isIncome || isInit)
+              ? 'text-emerald-500'
+              : 'text-rose-500';
+
+          const badgeClass = isInit
+            ? 'bg-slate-500/15 text-subtle'
+            : isTransfer
+              ? 'bg-blue-500/15 text-blue-500'
+              : isIncome
+                ? 'bg-emerald-500/15 text-emerald-500'
+                : 'bg-rose-500/15 text-rose-500';
+
+          const title = isInit
+            ? `Saldo iniziale (${tx.account})`
+            : isTransfer
+              ? `${tx.account} → ${tx.toAccount}`
+              : `${tx.category}${tx.subcategory ? ' › ' + tx.subcategory : ''}`;
+
+          const subLine = isInit
+            ? `${tx.date} • Riga speciale CSV`
+            : `${tx.date} • ${tx.account}${tx.note ? ' • ' + tx.note : ''}`;
+
+          return `
+            <div class="surface-card border rounded-2xl p-3 shadow-sm flex items-center justify-between gap-2.5">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}">${escapeHTML(tx.type)}</span>
+                  <span class="text-xs font-bold truncate">${escapeHTML(title)}</span>
+                </div>
+                <div class="text-[11px] text-subtle truncate mt-1">${escapeHTML(subLine)}</div>
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-xs font-extrabold ${amountClass}">${sign}${formatEUR(tx.amount)}</div>
+                ${!isInit ? `
+                  <div class="flex items-center justify-end gap-2 mt-1">
+                    <button type="button" data-edit-tx="${escapeAttr(tx.id)}" class="text-[10px] font-semibold text-blue-500 hover:underline">Modifica</button>
+                    <button type="button" data-delete-tx="${escapeAttr(tx.id)}" class="text-[10px] font-semibold text-rose-500 hover:underline">Elimina</button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function renderCharts() {
+        const mode = state.reportMode || 'month';
+        const selectedAccount = state.reportAccount || 'ALL';
+
+        document.querySelectorAll('.report-mode-btn').forEach((btn) => {
+          const isAct = btn.dataset.reportMode === mode;
+          btn.className = 'report-mode-btn px-2.5 py-1 rounded-lg transition ' + (
+            isAct ? 'bg-blue-600 text-white' : 'text-subtle hover:opacity-80'
+          );
+        });
+        document.getElementById('report-month-wrap').classList.toggle('hidden', mode !== 'month');
+        document.getElementById('report-year-wrap').classList.toggle('hidden', mode !== 'year');
+
+        const repAccSel = document.getElementById('report-account');
+        repAccSel.innerHTML = `<option value="ALL">Tutti i conti</option>` +
+          state.accounts.map((a) => `<option value="${escapeAttr(a.name)}">${escapeHTML(a.icon)} ${escapeHTML(a.name)}</option>`).join('');
+        repAccSel.value = (selectedAccount === 'ALL' || state.accounts.some((a) => a.name === selectedAccount))
+          ? selectedAccount
+          : 'ALL';
+        const activeAccount = repAccSel.value;
+
+        const baseTxs = state.transactions.filter((t) => {
+          if (t.type !== 'Entrata' && t.type !== 'Uscita') return false;
+          if (activeAccount !== 'ALL' && t.account !== activeAccount) return false;
+          return true;
+        });
+
+        const curYM = currentMonthKey();
+        const months = Array.from(
+          new Set([
+            ...baseTxs.map((t) => (t.date || '').slice(0, 7)).filter(Boolean),
+            curYM
+          ])
+        ).sort();
+
+        const reportSel = document.getElementById('report-month');
+        const activeYM = state.selectedReportMonth || curYM;
+        reportSel.innerHTML = months
+          .slice()
+          .reverse()
+          .map((m) => `<option value="${escapeAttr(m)}">${escapeHTML(formatMonthLabel(m))}</option>`)
+          .join('');
+        reportSel.value = months.includes(activeYM) ? activeYM : months[months.length - 1];
+        const chosenMonth = reportSel.value;
+
+        const years = Array.from(
+          new Set([
+            ...months.map((m) => m.slice(0, 4)),
+            String(new Date().getFullYear())
+          ])
+        ).sort().reverse();
+
+        const yearSel = document.getElementById('report-year');
+        const activeYear = state.selectedReportYear || years[0];
+        yearSel.innerHTML = years
+          .map((y) => `<option value="${escapeAttr(y)}">${escapeHTML(y)}</option>`)
+          .join('');
+        yearSel.value = years.includes(activeYear) ? activeYear : years[0];
+        const chosenYear = yearSel.value;
+
+        const periodTxs = baseTxs.filter((t) => {
+          const d = t.date || '';
+          return mode === 'year' ? d.startsWith(`${chosenYear}-`) : d.startsWith(chosenMonth);
+        });
+
+        const incomeSum = periodTxs
+          .filter((t) => t.type === 'Entrata')
+          .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+
+        const expenseSum = periodTxs
+          .filter((t) => t.type === 'Uscita')
+          .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+
+        const savings = incomeSum - expenseSum;
+        const periodLabel = mode === 'year' ? `Anno ${chosenYear}` : formatMonthLabel(chosenMonth);
+        const accLabel = activeAccount === 'ALL' ? 'Tutti i conti' : activeAccount;
+
+        document.getElementById('kpi-income').textContent = formatEUR(incomeSum);
+        document.getElementById('kpi-expense').textContent = formatEUR(expenseSum);
+        const savEl = document.getElementById('kpi-savings');
+        savEl.textContent = formatEUR(savings);
+        savEl.className = 'text-xs sm:text-sm font-extrabold mt-1 block ' + (savings >= 0 ? 'text-emerald-500' : 'text-rose-500');
+
+        document.getElementById('donut-subtitle').textContent = `${periodLabel} • ${accLabel}`;
+
+        const groupMode = document.getElementById('donut-group-mode').value || state.donutGroupMode || 'category';
+        const expenseTxs = periodTxs.filter((t) => t.type === 'Uscita');
+        const expenseMap = {};
+        expenseTxs.forEach((t) => {
+          const key = groupMode === 'subcategory'
+            ? `${t.category || 'Altro'} › ${t.subcategory || 'Generale'}`
+            : (t.category || 'Altro');
+          expenseMap[key] = (expenseMap[key] || 0) + Math.abs(Number(t.amount) || 0);
+        });
+
+        const sortedEntries = Object.entries(expenseMap).sort((a, b) => b[1] - a[1]);
+        const labels = sortedEntries.map((e) => e[0]);
+        const values = sortedEntries.map((e) => e[1]);
+        const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+        if (state.selectedReportCategory && !expenseMap[state.selectedReportCategory]) {
+          state.selectedReportCategory = null;
+        }
+
+        const breakdownEl = document.getElementById('donut-breakdown');
+        if (sortedEntries.length === 0) {
+          breakdownEl.innerHTML = `<p class="text-subtle text-center py-2">Nessuna uscita registrata per ${escapeHTML(periodLabel)} (${escapeHTML(accLabel)}).</p>`;
+        } else {
+          breakdownEl.innerHTML = sortedEntries.map(([label, val], idx) => {
+            const pct = expenseSum > 0 ? ((val / expenseSum) * 100).toFixed(1) : '0.0';
+            const color = palette[idx % palette.length];
+            const isSelected = state.selectedReportCategory === label;
+            return `
+              <button
+                type="button"
+                data-select-report-cat="${escapeAttr(label)}"
+                class="w-full p-2 rounded-xl border text-left flex items-center justify-between gap-2 transition ${isSelected ? 'border-blue-500 bg-blue-500/10' : 'surface-muted hover:border-blue-500/50'}"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${color}"></span>
+                  <span class="truncate font-semibold">${escapeHTML(label)}</span>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <span class="font-bold whitespace-nowrap">${formatEUR(val)} <span class="text-subtle font-normal">(${pct}%)</span></span>
+                  <span class="text-[10px] text-blue-500 font-bold">${isSelected ? '▼' : '›'}</span>
+                </div>
+              </button>
+            `;
+          }).join('');
+        }
+
+        renderReportCategoryDetail(expenseTxs, groupMode);
+
+        const isDark = state.theme === 'dark';
+        const tickColor = isDark ? '#94a3b8' : '#475569';
+        const gridColor = isDark ? 'rgba(148, 163, 184, 0.14)' : 'rgba(15, 23, 42, 0.08)';
+
+        const donutCanvas = document.getElementById('chart-category-donut');
+        if (donutChartInstance) {
+          donutChartInstance.destroy();
+          donutChartInstance = null;
+        }
+        if (donutCanvas && typeof Chart !== 'undefined') {
+          donutChartInstance = new Chart(donutCanvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+              labels: labels.length ? labels : ['Nessuna uscita'],
+              datasets: [{
+                data: values.length ? values : [1],
+                backgroundColor: values.length ? labels.map((_, i) => palette[i % palette.length]) : [gridColor],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: '62%',
+              onClick: (_event, elements) => {
+                if (!values.length || !elements || elements.length === 0) return;
+                const clickedIdx = elements[0].index;
+                const clickedLabel = labels[clickedIdx];
+                if (!clickedLabel) return;
+                state.selectedReportCategory = state.selectedReportCategory === clickedLabel ? null : clickedLabel;
+                setTimeout(() => renderCharts(), 0);
+              },
+              plugins: {
+                legend: { display: false }
+              }
+            }
+          });
+        }
+
+        let barKeys = months;
+        if (mode === 'year') {
+          barKeys = Array.from({ length: 12 }, (_, idx) => `${chosenYear}-${String(idx + 1).padStart(2, '0')}`);
+          document.getElementById('bar-chart-title').textContent = `📊 Entrate vs Uscite (${chosenYear})`;
+          document.getElementById('bar-chart-subtitle').textContent = `Tutti i 12 mesi • ${accLabel}`;
+        } else {
+          document.getElementById('bar-chart-title').textContent = '📊 Entrate vs Uscite Mensili';
+          document.getElementById('bar-chart-subtitle').textContent = `Confronto mensile • ${accLabel}`;
+        }
+
+        const barLabels = barKeys.map((m) => formatMonthLabel(m).split(' ')[0].slice(0, 3) + (mode === 'month' ? ' ' + m.slice(2, 4) : ''));
+        const incomeSeries = barKeys.map((m) =>
+          baseTxs
+            .filter((t) => (t.date || '').startsWith(m) && t.type === 'Entrata')
+            .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0)
+        );
+        const expenseSeries = barKeys.map((m) =>
+          baseTxs
+            .filter((t) => (t.date || '').startsWith(m) && t.type === 'Uscita')
+            .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0)
+        );
+
+        const barCanvas = document.getElementById('chart-monthly-bars');
+        if (barChartInstance) {
+          barChartInstance.destroy();
+          barChartInstance = null;
+        }
+        if (barCanvas && typeof Chart !== 'undefined') {
+          barChartInstance = new Chart(barCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: barLabels,
+              datasets: [
+                {
+                  label: 'Entrate',
+                  data: incomeSeries,
+                  backgroundColor: '#10b981',
+                  borderRadius: 6
+                },
+                {
+                  label: 'Uscite',
+                  data: expenseSeries,
+                  backgroundColor: '#f43f5e',
+                  borderRadius: 6
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: { color: tickColor, font: { size: 11, family: 'Inter' } }
+                }
+              },
+              scales: {
+                x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { display: false } },
+                y: { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } }
+              }
+            }
+          });
+        }
+      }
+
+      function renderReportCategoryDetail(expenseTxs, groupMode) {
+        const panel = document.getElementById('report-category-detail');
+        const titleEl = document.getElementById('report-detail-title');
+        const listEl = document.getElementById('report-detail-list');
+        const selectedKey = state.selectedReportCategory;
+
+        if (!selectedKey) {
+          panel.classList.add('hidden');
+          return;
+        }
+
+        const matching = expenseTxs
+          .filter((t) => {
+            const key = groupMode === 'subcategory'
+              ? `${t.category || 'Altro'} › ${t.subcategory || 'Generale'}`
+              : (t.category || 'Altro');
+            return key === selectedKey;
+          })
+          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        if (matching.length === 0) {
+          panel.classList.add('hidden');
+          return;
+        }
+
+        const catTotal = matching.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+        titleEl.textContent = `${selectedKey} (${matching.length} voci • ${formatEUR(catTotal)})`;
+
+        listEl.innerHTML = matching.map((tx) => {
+          const subLabel = groupMode === 'category' && tx.subcategory ? `${tx.subcategory} • ` : '';
+          return `
+            <div class="p-2.5 rounded-xl border surface-muted flex items-center justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold truncate">${escapeHTML(tx.note || tx.subcategory || tx.category || 'Spesa')}</div>
+                <div class="text-[10px] text-subtle truncate mt-0.5">
+                  ${escapeHTML(tx.date)} • ${escapeHTML(subLabel)}${escapeHTML(tx.account)}
+                </div>
+              </div>
+              <div class="text-xs font-extrabold text-rose-500 whitespace-nowrap">
+                -${formatEUR(tx.amount)}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        panel.classList.remove('hidden');
+      }
+
+      // =========================================================
+      // GENERAZIONE / PARSING CSV & INTEGRAZIONE GOOGLE DRIVE
+      // =========================================================
+      function buildCSVString() {
+        const header = 'ID;Data;Tipo;Importo;Conto;Conto_Destinazione;Categoria;Sottocategoria;Ricorrente;Note';
+        const rows = state.transactions.map((t) => [
+          t.id || '',
+          t.date || '',
+          t.type || '',
+          formatCSVNumber(t.amount),
+          t.account || '',
+          t.toAccount || '',
+          t.category || '',
+          t.subcategory || '',
+          t.recurring || '',
+          (t.note || '').replace(/;/g, ',').replace(/[\r\n]+/g, ' ')
+        ].join(';'));
+        return [header, ...rows].join('\n');
+      }
+
+      function parseCSVIntoState(csvText) {
+        const cleanedText = String(csvText || '').replace(/^\uFEFF/, '');
+        const lines = cleanedText
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter(Boolean);
+
+        if (lines.length < 2) return false;
+
+        const parsedTx = [];
+        const discoveredAccounts = new Set(state.accounts.map((a) => a.name));
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(';');
+          if (cols.length < 4) continue;
+          const type = (cols[2] || 'Uscita').trim();
+          const amount = parseCSVNumber(cols[3]);
+          const account = (cols[4] || 'Conto Corrente').trim();
+          const toAccount = (cols[5] || '').trim();
+          const category = (cols[6] || '').trim();
+          const subcategory = (cols[7] || '').trim();
+
+          if (account) discoveredAccounts.add(account);
+          if (toAccount) discoveredAccounts.add(toAccount);
+
+          if (category && type !== 'Saldo_Iniziale' && type !== 'Giroconto') {
+            let catObj = state.categories.find((c) => c.name.toLowerCase() === category.toLowerCase());
+            if (!catObj) {
+              catObj = {
+                id: 'cat_' + Date.now() + '_' + i,
+                name: category,
+                type: type === 'Entrata' ? 'Entrata' : 'Uscita',
+                subs: subcategory ? [subcategory] : ['Generale']
+              };
+              state.categories.push(catObj);
+            } else if (subcategory && !catObj.subs.includes(subcategory)) {
+              catObj.subs.push(subcategory);
+            }
+          }
+
+          parsedTx.push({
+            id: (cols[0] || `tx_${Date.now()}_${i}`).trim(),
+            date: (cols[1] || todayISO()).trim(),
+            type,
+            amount,
+            account,
+            toAccount,
+            category,
+            subcategory,
+            recurring: (cols[8] || '').trim(),
+            note: (cols[9] || '').trim()
+          });
+        }
+
+        discoveredAccounts.forEach((accName) => {
+          if (!state.accounts.some((a) => a.name === accName)) {
+            state.accounts.push({
+              id: 'acc_' + accName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+              name: accName,
+              icon: '🏦'
+            });
+          }
+        });
+
+        state.transactions = parsedTx;
+        return true;
+      }
+
+      function requestGoogleAuth(callback) {
+        const clientId = (state.googleClientId || '').trim();
+        if (!clientId) {
+          showToast('Inserisci prima il tuo Google OAuth Client ID nelle Impostazioni.', 'error');
+          return;
+        }
+        if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+          showToast('Libreria Google Identity non caricata (controlla la connessione).', 'error');
+          return;
+        }
+
+        tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: DRIVE_SCOPE,
+          callback: (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              googleAccessToken = tokenResponse.access_token;
+              renderSettingsTab();
+              showToast('Autenticazione Google Drive completata.', 'success');
+              if (typeof callback === 'function') callback(googleAccessToken);
+            } else {
+              showToast('Autenticazione Google annullata o non riuscita.', 'error');
+            }
+          }
+        });
+
+        tokenClient.requestAccessToken({ prompt: googleAccessToken ? '' : 'consent' });
+      }
+
+      async function findDriveCsvFileId(token) {
+        const query = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime)&spaces=drive`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          if (res.status === 401) googleAccessToken = null;
+          throw new Error(`Errore ricerca file Drive (${res.status})`);
+        }
+        const data = await res.json();
+        return data.files && data.files.length > 0 ? data.files[0].id : null;
+      }
+
+      async function uploadCsvToDrive() {
+        if (!googleAccessToken) {
+          requestGoogleAuth(() => uploadCsvToDrive());
+          return;
+        }
+
+        try {
+          showToast('Caricamento su Google Drive in corso...', 'info');
+          const csvContent = '\uFEFF' + buildCSVString();
+          const existingFileId = await findDriveCsvFileId(googleAccessToken);
+
+          const boundary = '-------finanze_pwa_multipart_boundary';
+          const metadata = existingFileId
+            ? { name: DRIVE_FILE_NAME, mimeType: 'text/csv' }
+            : { name: DRIVE_FILE_NAME, mimeType: 'text/csv' };
+
+          const multipartBody =
+            `--${boundary}\r\n` +
+            `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+            `${JSON.stringify(metadata)}\r\n` +
+            `--${boundary}\r\n` +
+            `Content-Type: text/csv; charset=UTF-8\r\n\r\n` +
+            `${csvContent}\r\n` +
+            `--${boundary}--`;
+
+          const url = existingFileId
+            ? `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart`
+            : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+
+          const res = await fetch(url, {
+            method: existingFileId ? 'PATCH' : 'POST',
+            headers: {
+              Authorization: `Bearer ${googleAccessToken}`,
+              'Content-Type': `multipart/related; boundary=${boundary}`
+            },
+            body: multipartBody
+          });
+
+          if (!res.ok) throw new Error(`Errore upload Drive (${res.status})`);
+
+          state.driveLastSync = new Date().toLocaleString('it-IT') + ' (Caricato)';
+          saveState();
+          renderSettingsTab();
+          showToast('Backup finanze_personali.csv salvato su Google Drive!', 'success');
+        } catch (err) {
+          console.error(err);
+          renderSettingsTab();
+          showToast(err.message || 'Errore durante il caricamento su Drive.', 'error');
+        }
+      }
+
+      async function downloadCsvFromDrive() {
+        if (!googleAccessToken) {
+          requestGoogleAuth(() => downloadCsvFromDrive());
+          return;
+        }
+
+        try {
+          showToast('Ricerca backup su Google Drive...', 'info');
+          const fileId = await findDriveCsvFileId(googleAccessToken);
+          if (!fileId) {
+            showToast('Nessun file finanze_personali.csv trovato su Google Drive.', 'error');
+            return;
+          }
+
+          const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { Authorization: `Bearer ${googleAccessToken}` }
+          });
+          if (!res.ok) throw new Error(`Errore download Drive (${res.status})`);
+
+          const csvText = await res.text();
+          if (parseCSVIntoState(csvText)) {
+            state.driveLastSync = new Date().toLocaleString('it-IT') + ' (Ripristinato)';
+            saveState();
+            renderAll();
+            showToast('Dati e saldi ripristinati da Google Drive!', 'success');
+          } else {
+            showToast('Il file CSV su Drive risulta vuoto o non valido.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          renderSettingsTab();
+          showToast(err.message || 'Errore durante il download da Drive.', 'error');
+        }
+      }
+
+      function renderSettingsTab() {
+        const pillDot = document.getElementById('drive-dot');
+        const pillText = document.getElementById('drive-pill-text');
+        const connectBtn = document.getElementById('btn-drive-connect');
+        const statusLabel = document.getElementById('drive-status-label');
+        const lastSyncLabel = document.getElementById('drive-last-sync');
+        const clientIdInput = document.getElementById('google-client-id');
+
+        if (clientIdInput && document.activeElement !== clientIdInput) {
+          clientIdInput.value = state.googleClientId || '';
+        }
+
+        if (googleAccessToken) {
+          pillDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+          pillText.textContent = 'Drive OK';
+          connectBtn.textContent = 'Riconnetti';
+          statusLabel.textContent = 'Autenticato su Google Drive (scope drive.file)';
+        } else {
+          pillDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+          pillText.textContent = 'Offline';
+          connectBtn.textContent = 'Accedi Google';
+          statusLabel.textContent = state.googleClientId
+            ? 'Pronto per autenticazione Google'
+            : 'Configura il Client ID per abilitare Drive';
+        }
+        lastSyncLabel.textContent = state.driveLastSync || 'Mai sincronizzato';
+
+        const { byAccount } = computeBalances();
+        const accList = document.getElementById('settings-accounts-list');
+        accList.innerHTML = state.accounts.map((acc) => {
+          const initTx = state.transactions.find((t) => t.type === 'Saldo_Iniziale' && t.account === acc.name);
+          const initVal = initTx ? Number(initTx.amount) || 0 : 0;
+          return `
+            <div class="p-2.5 rounded-xl border surface-muted flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-xs font-bold truncate">${escapeHTML(acc.icon)} ${escapeHTML(acc.name)}</div>
+                <div class="text-[10px] text-subtle">Saldo: <strong>${formatEUR(byAccount[acc.name] || 0)}</strong> • Iniz.: ${formatEUR(initVal)}</div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button type="button" data-edit-acc="${escapeAttr(acc.id)}" class="px-2 py-1 rounded-lg border surface-card hover:opacity-80 text-[11px] font-semibold">✏️ Modifica</button>
+                ${state.accounts.length > 1 ? `
+                  <button type="button" data-del-acc="${escapeAttr(acc.id)}" class="p-1 text-xs text-rose-500" title="Elimina conto">✕</button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const catList = document.getElementById('settings-categories-list');
+        catList.innerHTML = state.categories.map((cat) => `
+          <div class="p-2 rounded-xl border surface-muted flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-xs font-bold truncate">
+                <span class="text-[10px] px-1.5 py-0.5 rounded mr-1 ${cat.type === 'Entrata' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${escapeHTML(cat.type)}</span>
+                ${escapeHTML(cat.name)}
+              </div>
+              <div class="text-[10px] text-subtle truncate">${escapeHTML((cat.subs || []).join(', '))}</div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" data-edit-cat="${escapeAttr(cat.id)}" class="px-2 py-1 rounded-lg border surface-card hover:opacity-80 text-[11px] font-semibold">✏️</button>
+              <button type="button" data-del-cat="${escapeAttr(cat.id)}" class="p-1 text-xs text-rose-500" title="Elimina categoria">✕</button>
+            </div>
+          </div>
+        `).join('');
+
+        const recList = document.getElementById('settings-recurring-list');
+        if (state.recurringRules.length === 0) {
+          recList.innerHTML = `<p class="text-[11px] text-subtle">Nessuna regola ricorrente configurata.</p>`;
+        } else {
+          recList.innerHTML = state.recurringRules.map((r) => {
+            const freqText = r.frequency || 'Mensile';
+            const dayText = r.dayOfMonth ? `giorno ${r.dayOfMonth}` : '';
+            const statusText = r.status || 'Attiva';
+            const routeText = r.type === 'Giroconto'
+              ? `${r.account} → ${r.toAccount || ''}`
+              : `${r.account} • ${r.category}${r.subcategory ? ' > ' + r.subcategory : ''}`;
+            return `
+              <div class="p-2.5 rounded-xl border surface-muted flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1 flex-wrap">
+                    <span class="text-xs font-bold truncate">${escapeHTML(r.note)} (${formatEUR(r.amount)})</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded-full font-bold ${statusText === 'Attiva' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'}">${escapeHTML(statusText)}</span>
+                  </div>
+                  <div class="text-[10px] text-subtle truncate">${escapeHTML(r.type)} • ${escapeHTML(routeText)} • ${escapeHTML(freqText)} ${escapeHTML(dayText)}</div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button type="button" data-gen-draft="${escapeAttr(r.id)}" class="px-2 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-bold">Bozza</button>
+                  <button type="button" data-edit-rec="${escapeAttr(r.id)}" class="px-1.5 py-1 rounded-lg border surface-card text-[11px]" title="Modifica regola">✏️</button>
+                  <button type="button" data-del-rec="${escapeAttr(r.id)}" class="p-1 text-xs text-rose-500" title="Elimina regola">✕</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      function renderAll() {
+        populateAccountSelects();
+        setFormType(state.currentFormType);
+        renderDrafts();
+        renderAccountsTab();
+        renderSettingsTab();
+        renderCharts();
+      }
+
+      function escapeHTML(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function escapeAttr(str) {
+        return escapeHTML(str).replace(/'/g, '&#39;');
+      }
+
+      function bindEvents() {
+        const toggleTheme = () => {
+          state.theme = state.theme === 'dark' ? 'light' : 'dark';
+          saveState();
+          applyTheme();
+        };
+        document.getElementById('btn-theme-toggle').addEventListener('click', toggleTheme);
+        document.getElementById('btn-settings-theme').addEventListener('click', toggleTheme);
+
+        document.getElementById('btn-header-drive').addEventListener('click', () => {
+          setActiveTab('tab-settings');
+        });
+
+        document.getElementById('toast-close').addEventListener('click', () => {
+          document.getElementById('toast-box').classList.add('hidden');
+        });
+
+        document.querySelectorAll('.nav-tab').forEach((btn) => {
+          btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+        });
+
+        document.querySelectorAll('.tx-type-btn').forEach((btn) => {
+          btn.addEventListener('click', () => setFormType(btn.dataset.txType));
+        });
+
+        document.getElementById('tx-category').addEventListener('change', () => {
+          updateSubcategorySelect();
+        });
+
+        document.getElementById('rec-type').addEventListener('change', () => {
+          populateCategorySelects(state.currentFormType);
+        });
+
+        document.getElementById('edit-rec-type').addEventListener('change', () => {
+          populateCategorySelects(state.currentFormType);
+        });
+
+        // Submit movimento
+        document.getElementById('tx-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const editId = document.getElementById('tx-edit-id').value.trim();
+          const type = state.currentFormType;
+          const amount = Math.abs(parseFloat(document.getElementById('tx-amount').value));
+          const date = document.getElementById('tx-date').value || todayISO();
+          const account = document.getElementById('tx-account').value;
+          const toAccount = type === 'Giroconto' ? document.getElementById('tx-to-account').value : '';
+          const category = type === 'Giroconto' ? 'Giroconto' : document.getElementById('tx-category').value;
+          const subcategory = type === 'Giroconto' ? '' : document.getElementById('tx-subcategory').value;
+          const note = document.getElementById('tx-note').value.trim();
+
+          if (!amount || amount <= 0) {
+            showToast('Inserisci un importo positivo maggiore di zero.', 'error');
+            return;
+          }
+
+          if (type === 'Giroconto' && account === toAccount) {
+            showToast('Seleziona un Conto Destinazione diverso da quello di origine.', 'error');
+            return;
+          }
+
+          const txObj = {
+            id: editId || ('tx_' + Date.now()),
+            date,
+            type,
+            amount,
+            account,
+            toAccount,
+            category,
+            subcategory,
+            recurring: '',
+            note
+          };
+
+          if (editId) {
+            const idx = state.transactions.findIndex((t) => t.id === editId);
+            if (idx !== -1) state.transactions[idx] = txObj;
+            showToast('Movimento aggiornato.', 'success');
+          } else {
+            state.transactions.push(txObj);
+            showToast(`${type} di ${formatEUR(amount)} salvata.`, 'success');
+          }
+
+          document.getElementById('tx-edit-id').value = '';
+          document.getElementById('btn-save-tx').textContent = 'Salva Movimento';
+          document.getElementById('btn-cancel-edit').classList.add('hidden');
+          document.getElementById('tx-amount').value = '';
+          document.getElementById('tx-note').value = '';
+
+          saveState();
+          renderAll();
+        });
+
+        document.getElementById('btn-cancel-edit').addEventListener('click', () => {
+          document.getElementById('tx-edit-id').value = '';
+          document.getElementById('btn-save-tx').textContent = 'Salva Movimento';
+          document.getElementById('btn-cancel-edit').classList.add('hidden');
+          document.getElementById('tx-amount').value = '';
+          document.getElementById('tx-note').value = '';
+          setFormType('Uscita');
+        });
+
+        // Bozze ricorrenti
+        document.getElementById('drafts-list').addEventListener('click', (e) => {
+          const confirmBtn = e.target.closest('[data-confirm-draft]');
+          const discardBtn = e.target.closest('[data-discard-draft]');
+
+          if (confirmBtn) {
+            const draftId = confirmBtn.dataset.confirmDraft;
+            const draft = state.pendingDrafts.find((d) => d.id === draftId);
+            if (draft) {
+              state.transactions.push({
+                id: 'tx_' + Date.now(),
+                date: draft.dueDate || todayISO(),
+                type: draft.type,
+                amount: Math.abs(Number(draft.amount) || 0),
+                account: draft.account,
+                toAccount: draft.toAccount || '',
+                category: draft.category || '',
+                subcategory: draft.subcategory || '',
+                recurring: 'Confermata',
+                note: draft.note || 'Bozza ricorrente confermata'
+              });
+              state.pendingDrafts = state.pendingDrafts.filter((d) => d.id !== draftId);
+              saveState();
+              renderAll();
+              showToast('Bozza ricorrente confermata e registrata.', 'success');
+            }
+          } else if (discardBtn) {
+            const draftId = discardBtn.dataset.discardDraft;
+            state.pendingDrafts = state.pendingDrafts.filter((d) => d.id !== draftId);
+            saveState();
+            renderDrafts();
+            showToast('Bozza ricorrente scartata.', 'info');
+          }
+        });
+
+        // Filtri storico
+        document.getElementById('filter-search').addEventListener('input', (e) => {
+          state.filters.search = e.target.value;
+          renderTransactionsList();
+        });
+        document.getElementById('filter-month').addEventListener('change', (e) => {
+          state.filters.month = e.target.value;
+          renderTransactionsList();
+        });
+        document.getElementById('filter-account').addEventListener('change', (e) => {
+          state.filters.account = e.target.value;
+          renderTransactionsList();
+        });
+        document.getElementById('filter-category').addEventListener('change', (e) => {
+          state.filters.category = e.target.value;
+          renderTransactionsList();
+        });
+
+        document.getElementById('btn-clear-filters').addEventListener('click', () => {
+          state.filters = { search: '', month: 'ALL', account: 'ALL', category: 'ALL' };
+          populateFilterOptions();
+          renderTransactionsList();
+        });
+
+        document.getElementById('accounts-grid').addEventListener('click', (e) => {
+          const card = e.target.closest('[data-quick-filter-account]');
+          if (!card) return;
+          state.filters.account = card.dataset.quickFilterAccount;
+          populateFilterOptions();
+          renderTransactionsList();
+          showToast(`Filtrato per conto: ${state.filters.account}`);
+        });
+
+        document.getElementById('transactions-list').addEventListener('click', (e) => {
+          const editBtn = e.target.closest('[data-edit-tx]');
+          const delBtn = e.target.closest('[data-delete-tx]');
+
+          if (editBtn) {
+            const tx = state.transactions.find((t) => t.id === editBtn.dataset.editTx);
+            if (!tx) return;
+            setActiveTab('tab-new');
+            setFormType(tx.type === 'Giroconto' ? 'Giroconto' : tx.type === 'Entrata' ? 'Entrata' : 'Uscita');
+            document.getElementById('tx-edit-id').value = tx.id;
+            document.getElementById('tx-amount').value = tx.amount;
+            document.getElementById('tx-date').value = tx.date;
+            document.getElementById('tx-account').value = tx.account;
+            if (tx.type === 'Giroconto') {
+              document.getElementById('tx-to-account').value = tx.toAccount;
+            } else {
+              populateCategorySelects(tx.type, tx.category, tx.subcategory);
+            }
+            document.getElementById('tx-note').value = tx.note || '';
+            document.getElementById('btn-save-tx').textContent = 'Aggiorna Movimento';
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+            showToast('Modifica movimento in corso...', 'info');
+          } else if (delBtn) {
+            const delId = delBtn.dataset.deleteTx;
+            state.transactions = state.transactions.filter((t) => t.id !== delId);
+            saveState();
+            renderAll();
+            showToast('Movimento eliminato.', 'info');
+          }
+        });
+
+        // Report eventi
+        document.querySelectorAll('.report-mode-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.reportMode = btn.dataset.reportMode;
+            saveState();
+            renderCharts();
+          });
+        });
+        document.getElementById('report-month').addEventListener('change', (e) => {
+          state.selectedReportMonth = e.target.value;
+          saveState();
+          renderCharts();
+        });
+        document.getElementById('report-year').addEventListener('change', (e) => {
+          state.selectedReportYear = e.target.value;
+          saveState();
+          renderCharts();
+        });
+        document.getElementById('report-account').addEventListener('change', (e) => {
+          state.reportAccount = e.target.value;
+          saveState();
+          renderCharts();
+        });
+        document.getElementById('donut-group-mode').addEventListener('change', (e) => {
+          state.donutGroupMode = e.target.value;
+          state.selectedReportCategory = null;
+          saveState();
+          renderCharts();
+        });
+
+        document.getElementById('donut-breakdown').addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-select-report-cat]');
+          if (!btn) return;
+          const label = btn.dataset.selectReportCat;
+          state.selectedReportCategory = state.selectedReportCategory === label ? null : label;
+          renderCharts();
+        });
+
+        document.getElementById('btn-close-report-detail').addEventListener('click', () => {
+          state.selectedReportCategory = null;
+          renderCharts();
+        });
+
+        // Google Drive & Backup CSV Locale
+        document.getElementById('btn-save-client-id').addEventListener('click', () => {
+          state.googleClientId = document.getElementById('google-client-id').value.trim();
+          saveState();
+          renderSettingsTab();
+          showToast('Google Client ID salvato.', 'success');
+        });
+
+        document.getElementById('btn-drive-connect').addEventListener('click', () => {
+          state.googleClientId = document.getElementById('google-client-id').value.trim();
+          saveState();
+          requestGoogleAuth();
+        });
+
+        document.getElementById('btn-upload-drive').addEventListener('click', uploadCsvToDrive);
+        document.getElementById('btn-download-drive').addEventListener('click', downloadCsvFromDrive);
+
+        document.getElementById('btn-export-local-csv').addEventListener('click', () => {
+          const csv = buildCSVString();
+          const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = DRIVE_FILE_NAME;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast('Download di finanze_personali.csv avviato.', 'success');
+        });
+
+        document.getElementById('input-import-local-csv').addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            if (parseCSVIntoState(ev.target.result)) {
+              saveState();
+              renderAll();
+              showToast('File CSV importato e saldi aggiornati!', 'success');
+            } else {
+              showToast('Formato file CSV non valido.', 'error');
+            }
+            e.target.value = '';
+          };
+          reader.readAsText(file, 'UTF-8');
+        });
+
+        // Conti CRUD
+        document.getElementById('new-acc-icon-presets').addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-pick-new-acc-icon]');
+          if (btn) document.getElementById('new-acc-icon').value = btn.dataset.pickNewAccIcon;
+        });
+
+        document.getElementById('acc-icon-presets').addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-pick-acc-icon]');
+          if (btn) document.getElementById('edit-acc-icon').value = btn.dataset.pickAccIcon;
+        });
+
+        document.getElementById('settings-accounts-list').addEventListener('click', (e) => {
+          const editBtn = e.target.closest('[data-edit-acc]');
+          const delBtn = e.target.closest('[data-del-acc]');
+
+          if (editBtn) {
+            const acc = state.accounts.find((a) => a.id === editBtn.dataset.editAcc);
+            if (!acc) return;
+            const initTx = state.transactions.find((t) => t.type === 'Saldo_Iniziale' && t.account === acc.name);
+            document.getElementById('edit-acc-id').value = acc.id;
+            document.getElementById('edit-acc-icon').value = acc.icon || '🏦';
+            document.getElementById('edit-acc-name').value = acc.name;
+            document.getElementById('edit-acc-init').value = initTx ? Number(initTx.amount) || 0 : 0;
+            document.getElementById('edit-account-form').classList.remove('hidden');
+            return;
+          }
+
+          if (delBtn) {
+            const accId = delBtn.dataset.delAcc;
+            const target = state.accounts.find((a) => a.id === accId);
+            if (!target) return;
+            state.accounts = state.accounts.filter((a) => a.id !== accId);
+            state.transactions = state.transactions.filter((t) => t.type !== 'Saldo_Iniziale' || t.account !== target.name);
+            saveState();
+            renderAll();
+            showToast(`Conto "${target.name}" rimosso.`, 'info');
+          }
+        });
+
+        document.getElementById('btn-cancel-edit-acc').addEventListener('click', () => {
+          document.getElementById('edit-account-form').classList.add('hidden');
+        });
+
+        document.getElementById('edit-account-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const accId = document.getElementById('edit-acc-id').value;
+          const acc = state.accounts.find((a) => a.id === accId);
+          if (!acc) return;
+
+          const oldName = acc.name;
+          const newIcon = document.getElementById('edit-acc-icon').value.trim() || '🏦';
+          const newName = document.getElementById('edit-acc-name').value.trim();
+          const newInit = Math.abs(parseFloat(document.getElementById('edit-acc-init').value) || 0);
+          if (!newName) return;
+
+          if (state.accounts.some((a) => a.id !== accId && a.name.toLowerCase() === newName.toLowerCase())) {
+            showToast('Esiste già un altro conto con questo nome.', 'error');
+            return;
+          }
+
+          acc.icon = newIcon;
+          acc.name = newName;
+
+          let initTx = state.transactions.find((t) => t.type === 'Saldo_Iniziale' && (t.account === newName || t.account === oldName));
+          state.transactions.forEach((t) => {
+            if (t.account === oldName) t.account = newName;
+            if (t.toAccount === oldName) t.toAccount = newName;
+          });
+          if (initTx) {
+            initTx.account = newName;
+            initTx.amount = newInit;
+            initTx.note = `Saldo iniziale ${newName}`;
+          } else {
+            state.transactions.push({
+              id: 'init_' + accId,
+              date: todayISO(),
+              type: 'Saldo_Iniziale',
+              amount: newInit,
+              account: newName,
+              toAccount: '',
+              category: 'Sistema',
+              subcategory: 'Saldo Iniziale',
+              recurring: '',
+              note: `Saldo iniziale ${newName}`
+            });
+          }
+
+          state.recurringRules.forEach((r) => {
+            if (r.account === oldName) r.account = newName;
+            if (r.toAccount === oldName) r.toAccount = newName;
+          });
+          state.pendingDrafts.forEach((d) => {
+            if (d.account === oldName) d.account = newName;
+            if (d.toAccount === oldName) d.toAccount = newName;
+          });
+
+          document.getElementById('edit-account-form').classList.add('hidden');
+          saveState();
+          renderAll();
+          showToast(`Conto "${newName}" aggiornato.`, 'success');
+        });
+
+        document.getElementById('add-account-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const icon = document.getElementById('new-acc-icon').value.trim() || '🏦';
+          const name = document.getElementById('new-acc-name').value.trim();
+          const initAmt = Math.abs(parseFloat(document.getElementById('new-acc-init').value) || 0);
+          if (!name) return;
+
+          if (state.accounts.some((a) => a.name.toLowerCase() === name.toLowerCase())) {
+            showToast('Esiste già un conto con questo nome.', 'error');
+            return;
+          }
+
+          const newId = 'acc_' + Date.now();
+          state.accounts.push({ id: newId, name, icon });
+          state.transactions.push({
+            id: 'init_' + newId,
+            date: todayISO(),
+            type: 'Saldo_Iniziale',
+            amount: initAmt,
+            account: name,
+            toAccount: '',
+            category: 'Sistema',
+            subcategory: 'Saldo Iniziale',
+            recurring: '',
+            note: `Saldo iniziale ${name}`
+          });
+
+          document.getElementById('new-acc-name').value = '';
+          document.getElementById('new-acc-init').value = '0';
+          saveState();
+          renderAll();
+          showToast(`Conto "${name}" aggiunto.`, 'success');
+        });
+
+        // Categorie CRUD
+        document.getElementById('add-category-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const type = document.getElementById('new-cat-type').value;
+          const name = document.getElementById('new-cat-name').value.trim();
+          const rawSubs = document.getElementById('new-cat-subs').value;
+          if (!name) return;
+
+          const subs = rawSubs
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          state.categories.push({
+            id: 'cat_' + Date.now(),
+            name,
+            type,
+            subs: subs.length ? subs : ['Generale']
+          });
+
+          document.getElementById('new-cat-name').value = '';
+          document.getElementById('new-cat-subs').value = '';
+          saveState();
+          renderAll();
+          showToast(`Categoria "${name}" aggiunta.`, 'success');
+        });
+
+        document.getElementById('settings-categories-list').addEventListener('click', (e) => {
+          const editBtn = e.target.closest('[data-edit-cat]');
+          const delBtn = e.target.closest('[data-del-cat]');
+
+          if (editBtn) {
+            const cat = state.categories.find((c) => c.id === editBtn.dataset.editCat);
+            if (!cat) return;
+            document.getElementById('edit-cat-id').value = cat.id;
+            document.getElementById('edit-cat-type').value = cat.type || 'Uscita';
+            document.getElementById('edit-cat-name').value = cat.name;
+            document.getElementById('edit-cat-subs').value = (cat.subs || []).join(', ');
+            document.getElementById('edit-category-form').classList.remove('hidden');
+            return;
+          }
+
+          if (delBtn) {
+            state.categories = state.categories.filter((c) => c.id !== delBtn.dataset.delCat);
+            saveState();
+            renderAll();
+            showToast('Categoria rimossa.', 'info');
+          }
+        });
+
+        document.getElementById('btn-cancel-edit-cat').addEventListener('click', () => {
+          document.getElementById('edit-category-form').classList.add('hidden');
+        });
+
+        document.getElementById('edit-category-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const catId = document.getElementById('edit-cat-id').value;
+          const cat = state.categories.find((c) => c.id === catId);
+          if (!cat) return;
+
+          const oldName = cat.name;
+          const newType = document.getElementById('edit-cat-type').value;
+          const newName = document.getElementById('edit-cat-name').value.trim();
+          const subs = document.getElementById('edit-cat-subs').value
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          if (!newName) return;
+
+          cat.type = newType;
+          cat.name = newName;
+          cat.subs = subs.length ? subs : ['Generale'];
+
+          if (oldName !== newName) {
+            state.transactions.forEach((t) => {
+              if (t.category === oldName && t.type !== 'Saldo_Iniziale' && t.type !== 'Giroconto') {
+                t.category = newName;
+              }
+            });
+            state.recurringRules.forEach((r) => {
+              if (r.category === oldName) r.category = newName;
+            });
+          }
+
+          document.getElementById('edit-category-form').classList.add('hidden');
+          saveState();
+          renderAll();
+          showToast(`Categoria "${newName}" aggiornata.`, 'success');
+        });
+
+        // Ricorrenze CRUD
+        document.getElementById('add-recurring-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const type = document.getElementById('rec-type').value;
+          const amount = Math.abs(parseFloat(document.getElementById('rec-amount').value) || 0);
+          const account = document.getElementById('rec-account').value;
+          const category = type === 'Giroconto' ? 'Giroconto' : document.getElementById('rec-category').value;
+          const dayOfMonth = Math.min(31, Math.max(1, parseInt(document.getElementById('rec-day').value, 10) || 1));
+          const frequency = document.getElementById('rec-freq').value;
+          const status = document.getElementById('rec-status').value;
+          const note = document.getElementById('rec-note').value.trim();
+          if (!amount || !note) return;
+
+          const foundCat = state.categories.find((c) => c.name === category);
+          const subcategory = type === 'Giroconto' ? '' : ((foundCat && foundCat.subs && foundCat.subs[0]) || 'Generale');
+          const toAccount = type === 'Giroconto'
+            ? (state.accounts.find((a) => a.name !== account)?.name || account)
+            : '';
+
+          state.recurringRules.push({
+            id: 'rec_' + Date.now(),
+            type,
+            amount,
+            account,
+            toAccount,
+            category,
+            subcategory,
+            dayOfMonth,
+            frequency,
+            status,
+            note,
+            lastGeneratedCycle: ''
+          });
+
+          document.getElementById('rec-amount').value = '';
+          document.getElementById('rec-note').value = '';
+          saveState();
+          evaluateRecurringDueDrafts();
+          renderAll();
+          showToast('Regola ricorrente salvata.', 'success');
+        });
+
+        document.getElementById('settings-recurring-list').addEventListener('click', (e) => {
+          const editBtn = e.target.closest('[data-edit-rec]');
+          const genBtn = e.target.closest('[data-gen-draft]');
+          const delBtn = e.target.closest('[data-del-rec]');
+
+          if (editBtn) {
+            const rule = state.recurringRules.find((r) => r.id === editBtn.dataset.editRec);
+            if (!rule) return;
+            populateAccountSelects();
+            document.getElementById('edit-rec-id').value = rule.id;
+            document.getElementById('edit-rec-type').value = rule.type || 'Uscita';
+            document.getElementById('edit-rec-amount').value = rule.amount;
+            document.getElementById('edit-rec-account').value = rule.account;
+            document.getElementById('edit-rec-to-account').value = rule.toAccount || '';
+            populateCategorySelects(state.currentFormType);
+            if (rule.category) document.getElementById('edit-rec-category').value = rule.category;
+            document.getElementById('edit-rec-subcategory').value = rule.subcategory || '';
+            document.getElementById('edit-rec-day').value = rule.dayOfMonth || 1;
+            document.getElementById('edit-rec-freq').value = rule.frequency || 'Mensile';
+            document.getElementById('edit-rec-status').value = rule.status || 'Attiva';
+            document.getElementById('edit-rec-note').value = rule.note || '';
+            document.getElementById('edit-recurring-form').classList.remove('hidden');
+            return;
+          }
+
+          if (genBtn) {
+            const rule = state.recurringRules.find((r) => r.id === genBtn.dataset.genDraft);
+            if (rule) {
+              state.pendingDrafts.push({
+                id: 'draft_' + Date.now(),
+                dueDate: todayISO(),
+                type: rule.type,
+                amount: rule.amount,
+                account: rule.account,
+                toAccount: rule.toAccount || '',
+                category: rule.category,
+                subcategory: rule.subcategory || '',
+                note: rule.note
+              });
+              saveState();
+              renderDrafts();
+              setActiveTab('tab-new');
+              showToast('Nuova bozza creata nella scheda Nuovo Movimento.', 'success');
+            }
+          } else if (delBtn) {
+            state.recurringRules = state.recurringRules.filter((r) => r.id !== delBtn.dataset.delRec);
+            saveState();
+            renderSettingsTab();
+            showToast('Regola ricorrente eliminata.', 'info');
+          }
+        });
+
+        document.getElementById('btn-cancel-edit-rec').addEventListener('click', () => {
+          document.getElementById('edit-recurring-form').classList.add('hidden');
+        });
+
+        document.getElementById('edit-recurring-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const recId = document.getElementById('edit-rec-id').value;
+          const rule = state.recurringRules.find((r) => r.id === recId);
+          if (!rule) return;
+
+          const type = document.getElementById('edit-rec-type').value;
+          const amount = Math.abs(parseFloat(document.getElementById('edit-rec-amount').value) || 0);
+          const account = document.getElementById('edit-rec-account').value;
+          const toAccount = type === 'Giroconto' ? document.getElementById('edit-rec-to-account').value : '';
+          const category = type === 'Giroconto' ? 'Giroconto' : document.getElementById('edit-rec-category').value;
+          const subcategory = type === 'Giroconto' ? '' : document.getElementById('edit-rec-subcategory').value.trim();
+          const dayOfMonth = Math.min(31, Math.max(1, parseInt(document.getElementById('edit-rec-day').value, 10) || 1));
+          const frequency = document.getElementById('edit-rec-freq').value;
+          const status = document.getElementById('edit-rec-status').value;
+          const note = document.getElementById('edit-rec-note').value.trim();
+
+          if (!amount || !note) return;
+
+          rule.type = type;
+          rule.amount = amount;
+          rule.account = account;
+          rule.toAccount = toAccount;
+          rule.category = category;
+          rule.subcategory = subcategory;
+          rule.dayOfMonth = dayOfMonth;
+          rule.frequency = frequency;
+          rule.status = status;
+          rule.note = note;
+
+          document.getElementById('edit-recurring-form').classList.add('hidden');
+          saveState();
+          evaluateRecurringDueDrafts();
+          renderAll();
+          showToast('Regola ricorrente aggiornata.', 'success');
+        });
+
+        // Gestione installazione PWA su Android
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredInstallPrompt = e;
+          const installBtn = document.getElementById('btn-install-pwa');
+          if (installBtn) installBtn.classList.remove('hidden');
+        });
+
+        document.getElementById('btn-install-pwa').addEventListener('click', async () => {
+          if (!deferredInstallPrompt) return;
+          deferredInstallPrompt.prompt();
+          await deferredInstallPrompt.userChoice;
+          deferredInstallPrompt = null;
+          document.getElementById('btn-install-pwa').classList.add('hidden');
+        });
+      }
+
+      // Registrazione Service Worker per funzionamento offline
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch((err) => {
+            console.warn('Registrazione Service Worker:', err);
+          });
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('tx-date').value = todayISO();
+        bindEvents();
+        evaluateRecurringDueDrafts();
+        renderAll();
+        applyTheme();
+        setActiveTab(state.activeTab || 'tab-new');
+      });
+    })();
+  </script>
+</body>
+</html>
